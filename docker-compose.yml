@@ -1,0 +1,99 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15 # Use a specific version
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-user} # Use .env file or defaults
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-appdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Expose locally if needed for direct access
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-appdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7 # Use a specific version
+    container_name: redis_cache
+    ports:
+      - "6379:6379" # Expose locally if needed
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi_api
+    env_file:
+      - .env # Load environment variables from .env file
+    volumes:
+      - ./src:/app/src # Mount source code for hot-reloading (dev only!)
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+    # Command can be overridden for development (e.g., with --reload)
+    # command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: celery_worker
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src # Mount source code for updates (dev only!)
+    # Override the default CMD to run the Celery worker
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy # Worker might need DB
+      redis:
+        condition: service_healthy # Worker needs broker
+    networks:
+      - app-network
+
+  flower:
+    image: mher/flower:latest # Use official Flower image
+    container_name: celery_flower
+    env_file:
+      - .env # Flower might need broker URL if not default localhost
+    # Pass broker URL via command line arguments if needed, using env vars from .env
+    command: celery --broker=${CELERY_BROKER_URL:-redis://redis:6379/0} flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker: # Depends on worker conceptually, but technically just needs broker
+        condition: service_started
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
