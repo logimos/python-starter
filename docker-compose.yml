@@ -39,6 +39,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: fastapi_api
+    entrypoint: ["/app/entrypoint.sh"]
     env_file:
       - .env # Load environment variables from .env file
     volumes:

@@ -66,11 +66,22 @@ run-api: install ## [Python] Run the FastAPI development server locally
 run-worker: install ## [Python] Run the Celery worker locally
 	$(POETRY) run celery -A app.worker.celery_app worker --loglevel=info
 
+db-init: ## [Python] Initialize the database
+	$(POETRY) run alembic init src/alembic
+
 db-migrate: install ## [Python] Create a new Alembic migration script
-	$(POETRY) run alembic revision --autogenerate -m "New migration"
+	@read -p "Enter a description for the migration: " desc; \
+	if [ -z "$$desc" ]; then \
+	    echo "Description cannot be empty"; \
+	    exit 1; \
+	fi; \
+	$(POETRY) run alembic revision --autogenerate -m "$$desc"
 
 db-upgrade: install ## [Python] Apply pending Alembic migrations to the database
 	$(POETRY) run alembic upgrade head
+
+db-downgrade: install ## [Python] Downgrade the database to the previous revision
+	$(POETRY) run alembic downgrade -1
 
 db-current: install ## [Python] Show current Alembic migration revision
 	$(POETRY) run alembic current

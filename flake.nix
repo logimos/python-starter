@@ -64,6 +64,25 @@
             fi
             echo "-------------------------"
             echo "Development environment ready! Run 'poetry install' if needed."
+            echo "---------------------------------------------------------"
+            echo "If using sqlalchemy run 'make db-init' to initialize the database."
+            echo "alembic.ini: The main configuration file."
+            echo "   change script_location = src/alembic"
+            echo "   delete the sqlalchemy.url line, we will get this from the environment"
+            echo "   change file_template = %%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s if you want to use timezone aware timestamps"
+            echo "   copy .env.py.example to .env.py and fill in the values"
+            echp ""
+            echo "---------------------------------------------------------"
+            echo "src/alembic/: A directory containing:"
+            echo "  env.py: The script Alembic runs to configure the migration environment."
+            echo "  script.py.mako: A template for generating new migration scripts."
+            echo "  versions/: A directory where your migration scripts will live (initially empty)."
+            echo ""
+            echo "---------------------------------------------------------"
+            echo "Replace <your-repo-url> and <your-repo-name> placeholders."
+            echo "Update author details in pyproject.toml and potentially the README."
+            echo "Add actual build status/coverage badges if you set up CI/CD."
+            echo "If you didn't include a LICENSE file, either create one (e.g., with the MIT license text) or simply state 'This project is licensed under the MIT License.' at the end of the README."
           '';
         };
       }
